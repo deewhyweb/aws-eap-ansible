@@ -68,7 +68,7 @@
     tags: ['never', 'ec2-create']
   # Block is a Group of Tasks combined together
 
-- name: connect to JBoss instance
+- name: connect to JBoss instance, start EAP, and deploy application
   hosts: jboss
   gather_facts: true
   become: yes
