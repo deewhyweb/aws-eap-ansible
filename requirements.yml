@@ -1,0 +1,6 @@
+---
+collections:
+  - name: middleware_automation.jcliff
+    version: ">=0.0.23"
+  - name: middleware_automation.wildfly
+    version: "==1.0.5"
