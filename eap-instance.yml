@@ -6,10 +6,10 @@
     ami_id: "ami-0e3314c4e353d52d5"
     instance_type: "t2.medium"
     instance_count: 2
-    vpc_subnet_id: "subnet-0006267e18e81b477"
+    vpc_subnet_id: "subnet-004da60d20b10c1b3"
     aws_region: "us-east-1"
-    aws_security_group: "eap-demo"
-    aws_key_pair_name: "eap"
+    aws_security_group: "eap-group2"
+    aws_key_pair_name: "dy-eap"
 
   tasks:
     - name: Launch ec2 instances

@@ -5,6 +5,7 @@ This sample playbook will create two instances of EAP on AWS EC2 and deploy a si
 ## Prerequisites
 
 * An AWS account
+* You must subscribe to the Red Hat JBoss EAP marketplace offer in the aws marketplace, and accept the terms and conditions: https://aws.amazon.com/marketplace/search/results?searchTerms=jboss
 * a key-pair with the pem file referenced in hosts.yml https://us-east-1.console.aws.amazon.com/ec2/home?region=us-east-1#KeyPairs:
 * an AWS security group allowing inbound access from allowed ip addresses (e.g. your own ip) on ports 22, 8080 https://us-east-1.console.aws.amazon.com/ec2/home?region=us-east-1#SecurityGroups
 * a vpc-subnet, configured to automatically assign ip address and publis dns name. https://us-east-1.console.aws.amazon.com/vpc/home?region=us-east-1#Home:
