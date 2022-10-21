@@ -2,71 +2,48 @@
 - name: Create Ec2 instances
   hosts: localhost
   gather_facts: false
+  vars:
+    ami_id: "ami-0e3314c4e353d52d5"
+    instance_type: "t2.medium"
+    instance_count: 2
+    vpc_subnet_id: "subnet-0006267e18e81b477"
+    aws_region: "us-east-1"
+    aws_security_group: "eap-demo"
+    aws_key_pair_name: "eap"
+
   tasks:
+    - name: Launch ec2 instances
+      ec2:
+        region: "{{ aws_region }}"
+        key_name: "{{ aws_key_pair_name }}"
+        group: "{{ aws_security_group }}"
+        instance_type: "{{ instance_type }}"
+        image: "{{ ami_id }}"
+        wait: yes
+        wait_timeout: 500
+        count: "{{ instance_count }}"
+        instance_tags:
+          name: JBoss-EAP-servers
+          os: rhel
+        monitoring: no
+        vpc_subnet_id: "{{ vpc_subnet_id }}"
+        assign_public_ip: yes
+      register: ec2
+      delegate_to: localhost
 
-  # Block is a Group of Tasks combined together
-  - name: Get Info Block
-    block: 
-      - name: Get Running instance Info
-        
-        ec2_instance_info:
-        register: ec2info 
-
-      - name: Print info
-        debug: var="ec2info.instances"
-             
-
-    # By specifying always on the tag, 
-    # I let this block to run all the time by module_default
-    # this is for security to net create ec2 instances accidentally
-    tags: ['always', 'getinfoonly']
-
-  - name: Create EC2 Block
-    block: 
-
-      - name: Launch ec2 instances
-        tags: create_ec2
-        ec2:
-          region: us-east-1
-          key_name: eap 
-          group: eap-demo
-          instance_type: t2.medium
-          image: ami-0e3314c4e353d52d5
-          wait: yes
-          wait_timeout: 500
-          count: 2
-          instance_tags:
-            name: JBoss-EAP-servers
-            os: rhel
-          monitoring: no
-          vpc_subnet_id: subnet-0006267e18e81b477
-          assign_public_ip: yes
-        register: ec2
-        delegate_to: localhost
-
-      - name : Add instance to host group
-        add_host:
-          hostname: "{{ item.public_ip }}"
-          groupname: launched
-        loop: "{{ ec2.instances }}"
-
-      - name: Wait for SSH to come up
-        local_action:
-          module: wait_for
-          host: "{{ item.public_ip }}"
-          port: 22
-          delay: 10
-          timeout: 120
-        loop: "{{ ec2.instances }}"
-      - name: Add host to group 'jboss'
-        ansible.builtin.add_host:
-          hostname: '{{ item.dns_name }}'
-          groups: jboss
-        loop: "{{ ec2.instances }}"
-    # By specifying never on the tag of this block, 
-    # I let this block to run only when explicitely being called
-    tags: ['never', 'ec2-create']
-  # Block is a Group of Tasks combined together
+    - name: Wait for SSH to come up
+      local_action:
+        module: wait_for
+        host: "{{ item.public_ip }}"
+        port: 22
+        delay: 10
+        timeout: 120
+      loop: "{{ ec2.instances }}"
+    - name: Add host to group 'jboss'
+      ansible.builtin.add_host:
+        hostname: '{{ item.dns_name }}'
+        groups: jboss
+      loop: "{{ ec2.instances }}"
 
 - name: connect to JBoss instance, start EAP, and deploy application
   hosts: jboss
@@ -74,26 +51,22 @@
   become: yes
   collections:
     - middleware_automation.wildfly
+  vars:
+    app_artifact_location: "./"
+    app_artifact_name: "helloworld.war"
   tasks:
-  - name: JBoss block
-    block: 
-    - name: Start JBoss EAP
-      ansible.builtin.command: systemctl start eap7-standalone
-    - name: Copy file with owner and permissions
-      ansible.builtin.copy:
-        src: ./helloworld.war
-        dest: /opt/helloworld.war
-    - name: "Deploy webapp"
-      include_role:
-        name: wildfly_utils
-        tasks_from: jboss_cli.yml
-      vars:
-        jboss_home: "/opt/rh/eap7/root/usr/share/wildfly"
-        query: "'deploy --force /opt/helloworld.war'"
-        jboss_cli_controller_port: "9990"
-     
-
-    # By specifying always on the tag, 
-    # I let this block to run all the time by module_default
-    # this is for security to net create ec2 instances accidentally
-  tags: ['always', 'getinfoonly']
+  - name: Start JBoss EAP
+    ansible.builtin.command: systemctl start eap7-standalone
+  - name: Copy artifact to JBoss server
+    ansible.builtin.copy:
+      src: "{{ app_artifact_location }}{{ app_artifact_name }}"
+      dest: "/opt/{{ app_artifact_name }}"
+  - name: "Deploy war file"
+    include_role:
+      name: wildfly_utils
+      tasks_from: jboss_cli.yml
+    vars:
+      jboss_home: "/opt/rh/eap7/root/usr/share/wildfly"
+      query: "'deploy --force /opt/{{ app_artifact_name }}'"
+      jboss_cli_controller_port: "9990"
+    
