@@ -28,7 +28,7 @@ Install ansible dependencies
 
 Run the playbook
 
-```ansible-playbook eap-instance.yml -i ./hosts.yml --tags=ec2-create```
+```ansible-playbook eap-instance.yml -i ./hosts.yml```
 
 Once the playbook is created the helloworld application should be available on:
 
