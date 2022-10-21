@@ -12,9 +12,11 @@ This sample playbook will create two instances of EAP on AWS EC2 and deploy a si
 
 
 ## Steps
-Create a user and access keys at: https://us-east-1.console.aws.amazon.com/iamv2/home#/users
+Create a user and access keys at: https://us-east-1.console.aws.amazon.com/iamv2/home#/users 
 
-Set the keys as local environment variables:
+For the purpose of this demonstration we created a user with admin permissions, more fine grained permissions should be used and this repo will be updated with instructions on how to create these.
+
+Copy the access keys from the AWS console and set them as local environment variables:
 
 ```
  export AWS_ACCESS_KEY=aws_key_from_aws
