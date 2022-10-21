@@ -1,4 +1,4 @@
-## demonstration of deploying instances of PARG JBoss EAP to AWS EC2
+## Demonstration of deploying instances of PAYG JBoss EAP to AWS EC2 with Ansible
 
 This sample playbook will create two instances of EAP on AWS EC2 and deploy a simple helloworld.war file.
 
