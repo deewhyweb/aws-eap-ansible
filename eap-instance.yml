@@ -52,6 +52,10 @@
             to_port: 8080
             cidr_ip: "{{ my_ip }}/32"
           - proto: tcp
+            from_port: 9990
+            to_port: 9990
+            cidr_ip: "{{ my_ip }}/32"
+          - proto: tcp
             from_port: 22
             to_port: 22
             cidr_ip: "{{ my_ip }}/32"
