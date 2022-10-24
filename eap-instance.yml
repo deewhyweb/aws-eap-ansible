@@ -6,12 +6,77 @@
     ami_id: "ami-0e3314c4e353d52d5"
     instance_type: "t2.medium"
     instance_count: 2
-    vpc_subnet_id: "subnet-004da60d20b10c1b3"
     aws_region: "us-east-1"
-    aws_security_group: "eap-group2"
-    aws_key_pair_name: "dy-eap"
-
+    aws_key_pair_name: "eap"
+    vpc_name: "eap_vpc"
+ 
   tasks:
+    - name: Create VPC
+      amazon.aws.ec2_vpc_net:
+        name: "{{ vpc_name }}"
+        cidr_block: 10.0.0.0/16
+        region: "{{ aws_region }}"
+      when: aws_vpc_id is not defined
+      register: vpc
+
+    - set_fact: 
+        aws_vpc_id={{ vpc.vpc.id }}
+      when: vpc is defined
+
+    - name: Create Internet gateway
+      amazon.aws.ec2_vpc_igw:
+        vpc_id: "{{ vpc.vpc.id }}"
+        state: present
+      register: igw
+
+    - name: Create security group
+      amazon.aws.ec2_group:
+        name: example
+        description: an example EC2 group
+        vpc_id: "{{ aws_vpc_id }}"
+        region: "{{ aws_region }}"
+        rules:
+          - proto: tcp
+            from_port: 8080
+            to_port: 8080
+            cidr_ip: 0.0.0.0/0
+          - proto: tcp
+            from_port: 22
+            to_port: 22
+            cidr_ip: 0.0.0.0/0
+      register: securitygroup
+      when: aws_security_group is not defined
+  
+    - set_fact: 
+        aws_security_group={{ securitygroup.group_name }}
+      when: securitygroup is defined
+
+    - name: Create subnet
+      amazon.aws.ec2_vpc_subnet:
+        state: present
+        vpc_id: "{{ aws_vpc_id }}"
+        cidr: 10.0.0.0/20
+        map_public: yes
+      register: subnet
+      when: vpc_subnet_id is not defined
+    - set_fact: 
+        vpc_subnet_id={{ subnet.subnet.id }}
+      when: subnet is defined
+
+    - name: Set up public subnet route table
+      community.aws.ec2_vpc_route_table:
+        vpc_id: "{{ aws_vpc_id }}"
+        region: "{{ aws_region }}"
+        tags:
+          Name: Public
+        subnets:
+          - "{{ vpc_subnet_id }}"
+        routes:
+          - dest: 0.0.0.0/0
+            gateway_id: "{{ igw.gateway_id }}"
+      register: public_route_table
+      when: subnet is defined
+
     - name: Launch ec2 instances
       ec2:
         region: "{{ aws_region }}"

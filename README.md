@@ -7,8 +7,7 @@ This sample playbook will create two instances of EAP on AWS EC2 and deploy a si
 * An AWS account
 * You must subscribe to the Red Hat JBoss EAP marketplace offer in the aws marketplace, and accept the terms and conditions: https://aws.amazon.com/marketplace/search/results?searchTerms=jboss
 * a key-pair with the pem file referenced in hosts.yml https://us-east-1.console.aws.amazon.com/ec2/home?region=us-east-1#KeyPairs:
-* an AWS security group allowing inbound access from allowed ip addresses (e.g. your own ip) on ports 22, 8080 https://us-east-1.console.aws.amazon.com/ec2/home?region=us-east-1#SecurityGroups
-* a vpc-subnet, configured to automatically assign ip address and publis dns name. https://us-east-1.console.aws.amazon.com/vpc/home?region=us-east-1#Home:
+
 
 
 ## Steps
@@ -23,7 +22,11 @@ Copy the access keys from the AWS console and set them as local environment vari
  export AWS_SECRET_ACCESS_KEY=aws_secret_access_key_from_aws
 ```
 
-update the variables in eap-instance.yml with your own aws security group, key pair name, and vpc-subnet id - see prerequisites
+The playbook will create the required vpc, internet gateway, subnet, and security groups.  You can provide these as variables at runtime e.g.:
+
+* aws_vpc_id
+* aws_security_group
+* vpc_subnet_id
 
 Install ansible dependencies
 
