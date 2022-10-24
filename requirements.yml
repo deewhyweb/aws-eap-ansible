@@ -5,3 +5,4 @@ collections:
   - name: community.aws
   - name: amazon.aws
     version: "==3.3.1"
+  - name: community.general
