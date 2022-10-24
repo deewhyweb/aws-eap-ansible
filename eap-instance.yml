@@ -33,9 +33,6 @@
       community.general.ipify_facts:
       register: public_ip
 
-    - name: output
-      debug: msg="{{ public_ip }}"
-
     - set_fact: 
         my_ip={{ public_ip.ansible_facts.ipify_public_ip }}
       when: public_ip is defined

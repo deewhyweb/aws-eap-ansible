@@ -28,11 +28,18 @@ The playbook will create the required vpc, internet gateway, subnet, and securit
 * aws_security_group
 * vpc_subnet_id
 
-Install ansible dependencies
+### Install ansible dependencies
 
 ```ansible-galaxy collection install -r ./requirements.yml```
 
-Run the playbook
+### Set name and location of key file
+
+Update the name of the key pair file in eap-instance.yml, edit the aws_key_pair_name variable
+
+Update the name and location of the key pair file in hosts.yml
+
+
+### Run the playbook
 
 ```ansible-playbook eap-instance.yml -i ./hosts.yml```
 
