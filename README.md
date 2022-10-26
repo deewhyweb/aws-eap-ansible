@@ -41,7 +41,7 @@ Update the name and location of the key pair file in hosts.yml
 
 ### Run the playbook
 
-```ansible-playbook playbookyml -i ./hosts.yml```
+```ansible-playbook playbook.yml -i ./hosts.yml```
 
 Once the playbook is created the addressbook application should be available on:
 
