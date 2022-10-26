@@ -5,7 +5,7 @@ This sample playbook will create two instances of EAP on AWS EC2, a postgresql r
 ## Prerequisites
 
 * An AWS account
-* You must subscribe to the Red Hat JBoss EAP marketplace offer in the aws marketplace, and accept the terms and conditions: https://aws.amazon.com/marketplace/search/results?searchTerms=jboss
+* You must subscribe to the Red Hat JBoss EAP marketplace offer in the aws marketplace, and accept the terms and conditions: https://aws.amazon.com/marketplace/search/results?searchTerms=jboss&CREATOR=8bb46e3b-6208-4ac2-bdbd-339bb37b0e64&filters=CREATOR
 * a key-pair with the pem file referenced in hosts.yml https://us-east-1.console.aws.amazon.com/ec2/home?region=us-east-1#KeyPairs:
 
 
