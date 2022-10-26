@@ -1,0 +1,65 @@
+- name: connect to JBoss instance, start EAP, and deploy application
+  hosts: jboss
+  gather_facts: true
+  become: yes
+  collections:
+    - middleware_automation.wildfly
+    - middleware_automation.jcliff
+  vars:
+
+    wildfly_user: "{{ install_name }}"
+    wildfly_home: "/opt/rh/eap7/root/usr/share/wildfly"
+    install_name: "{{ override_install_name | default('jboss') }}"
+    app_artifact_location: "./"
+    app_artifact_name: "addressbook.war"
+    jdbc_driver_module_dir: "{{ wildfly_home }}/modules/org/postgresql/main"
+    jdbc_driver_version: 9.4.1212
+    jdbc_driver_jar_filename: "postgresql-{{ jdbc_driver_version }}.jar"
+    jdbc_driver_jar_url: "https://repo.maven.apache.org/maven2/org/postgresql/postgresql/{{ jdbc_driver_version }}/{{ jdbc_driver_jar_filename }}"
+    jdbc_driver_jar_installation_path: "{{ jdbc_driver_module_dir }}/{{ jdbc_driver_jar_filename }}"
+    jdbc_driver_module_name: 'org.postgresql'
+  tasks:
+  - name: Start JBoss EAP
+    ansible.builtin.command: systemctl start eap7-standalone
+  - name: Copy artifact to JBoss server
+    ansible.builtin.copy:
+      src: "{{ app_artifact_location }}{{ app_artifact_name }}"
+      dest: "/opt/{{ app_artifact_name }}"
+
+  - name: "Set up for JBoss module"
+    include_role:
+      name: wildfly_driver
+
+  - name: JCliff
+    include_role:
+      name: jcliff
+
+  - name: "Fine tuning configuration"
+    jcliff:
+      wfly_home: "{{ wildfly_home }}"
+      timeout: 7000
+      management_port: "9990"
+      components:
+      - drivers:
+        - driver_name: postgresql
+          driver_module_name: org.postgresql
+          driver_class_name: org.postgresql.Driver
+          driver_xa_datasource_class_name: org.postgresql.xa.PGXADataSource
+      - datasources:
+          - name: "eapdb"
+            use_java_context: 'true'
+            jndi_name: "java:jboss/datasources/AddressbookDS"
+            connection_url: "jdbc:postgresql://{{ (groups['pgsql'][0] if groups['pgsql'] | length > 0 else 'localhost') }}:5432/{{ postgres_db }}?user={{ postgres_username }}&password={{ postgres_password }}"
+            driver_name: postgresql
+
+
+
+  - name: "Deploy war file"
+    include_role:
+      name: wildfly_utils
+      tasks_from: jboss_cli.yml
+    vars:
+      jboss_home: "/opt/rh/eap7/root/usr/share/wildfly"
+      query: "'deploy --force /opt/{{ app_artifact_name }}'"
+      jboss_cli_controller_port: "9990"
+    

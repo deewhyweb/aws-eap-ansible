@@ -1,6 +1,6 @@
 ## Demonstration of deploying instances of PAYG JBoss EAP to AWS EC2 with Ansible
 
-This sample playbook will create two instances of EAP on AWS EC2 and deploy a simple helloworld.war file.
+This sample playbook will create two instances of EAP on AWS EC2, a postgresql rds instance, and a JBoss EAP application which uses this database connection.
 
 ## Prerequisites
 
@@ -34,15 +34,15 @@ The playbook will create the required vpc, internet gateway, subnet, and securit
 
 ### Set name and location of key file
 
-Update the name of the key pair file in eap-instance.yml, edit the aws_key_pair_name variable
+Update the name of the key pair file in aws.yml, edit the aws_key_pair_name variable
 
 Update the name and location of the key pair file in hosts.yml
 
 
 ### Run the playbook
 
-```ansible-playbook eap-instance.yml -i ./hosts.yml```
+```ansible-playbook playbookyml -i ./hosts.yml```
 
-Once the playbook is created the helloworld application should be available on:
+Once the playbook is created the addressbook application should be available on:
 
-http://ec2-instance-public-dns:8080/helloworld
+http://ec2-instance-public-dns:8080/addressbook

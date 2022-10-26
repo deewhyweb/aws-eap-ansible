@@ -1,0 +1,6 @@
+---
+# Deploy and configure AWS services
+- import_playbook: aws.yml
+
+# Configure JBoss and deploy app
+- import_playbook: jboss.yml
