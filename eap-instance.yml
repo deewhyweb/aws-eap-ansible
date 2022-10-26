@@ -9,6 +9,9 @@
     aws_region: "us-east-1"
     aws_key_pair_name: "eap"
     vpc_name: "eap_vpc"
+    username: "user1"
+    password: "pass$PA55!!"
+    allocated_storage: 10
  
   tasks:
     - name: Create VPC
@@ -36,10 +39,48 @@
     - set_fact: 
         my_ip={{ public_ip.ansible_facts.ipify_public_ip }}
       when: public_ip is defined
+    
+    - name: Create ec2-rds security group
+      amazon.aws.ec2_group:
+        name: ec2-rds
+        description: an example EC2 group
+        vpc_id: "{{ aws_vpc_id }}"
+        region: "{{ aws_region }}"
+
+
+    - name: Create rds-ec2 security group
+      amazon.aws.ec2_group:
+        name: rds-ec2
+        description: an example EC2 group
+        vpc_id: "{{ aws_vpc_id }}"
+        region: "{{ aws_region }}"
+        rules:
+          - proto: tcp
+            from_port: 5432
+            to_port: 5432
+            group_name: "ec2-rds"
+            rule_desc: "allow access from ec2 on port 5432"
+      register: rds_ec2_security_group
+
+    - name: modify ec2-rds security group
+      amazon.aws.ec2_group:
+        name: ec2-rds
+        description: an example EC2 group
+        vpc_id: "{{ aws_vpc_id }}"
+        region: "{{ aws_region }}"
+        rules_egress:
+          - proto: tcp
+            from_port: 5432
+            to_port: 5432
+            group_name: "rds-ec2"
+            rule_desc: "allow access to postgresql on rds port 5432"
+
+      register: securitygroup
+      when: aws_security_group is not defined
 
     - name: Create security group
       amazon.aws.ec2_group:
-        name: example
+        name: eap-security-group
         description: an example EC2 group
         vpc_id: "{{ aws_vpc_id }}"
         region: "{{ aws_region }}"
@@ -67,13 +108,67 @@
       amazon.aws.ec2_vpc_subnet:
         state: present
         vpc_id: "{{ aws_vpc_id }}"
-        cidr: 10.0.0.0/20
+        cidr: 10.0.1.0/24
         map_public: yes
       register: subnet
       when: vpc_subnet_id is not defined
     - set_fact: 
         vpc_subnet_id={{ subnet.subnet.id }}
       when: subnet is defined
+
+    - name: Create db subnet1
+      amazon.aws.ec2_vpc_subnet:
+        state: present
+        vpc_id: "{{ aws_vpc_id }}"
+        cidr: 10.0.2.0/24
+        az: us-east-1a
+      register: dbsubnet1
+    - set_fact: 
+        vpc_dbsubnet1_id={{ dbsubnet1.subnet.id }}
+      when: dbsubnet1 is defined
+
+    - name: Create db subnet2
+      amazon.aws.ec2_vpc_subnet:
+        state: present
+        vpc_id: "{{ aws_vpc_id }}"
+        cidr: 10.0.3.0/24
+        az: us-east-1f
+      register: dbsubnet2
+    - set_fact: 
+        vpc_dbsubnet2_id={{ dbsubnet2.subnet.id }}
+      when: dbsubnet2 is defined
+
+    - name: Add or change a subnet group
+      community.aws.rds_subnet_group:
+        state: present
+        name: eap-group
+        description: subnet group
+        subnets:
+          - "{{ vpc_dbsubnet1_id }}"
+          - "{{ vpc_dbsubnet2_id }}"
+
+
+    - name: Create a DB instance 
+      community.aws.rds_instance:
+        id: test-postgres-db2
+        state: present
+        engine: postgres
+        vpc_security_group_ids:
+        - "{{ rds_ec2_security_group.group_id }}"
+        db_instance_class: db.t3.small
+        db_subnet_group_name: "eap-group"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        allocated_storage: "{{ allocated_storage }}"
+        db_name: "wildfly"
+      register: postgres_instance
+    - debug: msg="{{postgres_instance}}"
+
+    - name: Add db to group 'pgsql'
+      ansible.builtin.add_host:
+        hostname: '{{ postgres_instance.endpoint.address }}'
+        groups: pgsql
+
 
     - name: Set up public subnet route table
       community.aws.ec2_vpc_route_table:
@@ -93,7 +188,9 @@
       ec2:
         region: "{{ aws_region }}"
         key_name: "{{ aws_key_pair_name }}"
-        group: "{{ aws_security_group }}"
+        groups: 
+        - "{{ aws_security_group }}"
+        - ec2-rds
         instance_type: "{{ instance_type }}"
         image: "{{ ami_id }}"
         wait: yes
@@ -128,9 +225,20 @@
   become: yes
   collections:
     - middleware_automation.wildfly
+    - middleware_automation.jcliff
   vars:
+
+    wildfly_user: "{{ install_name }}"
+    wildfly_home: "/opt/rh/eap7/root/usr/share/wildfly"
+    install_name: "{{ override_install_name | default('jboss') }}"
     app_artifact_location: "./"
-    app_artifact_name: "helloworld.war"
+    app_artifact_name: "addressbook.war"
+    jdbc_driver_module_dir: "{{ wildfly_home }}/modules/org/postgresql/main"
+    jdbc_driver_version: 9.4.1212
+    jdbc_driver_jar_filename: "postgresql-{{ jdbc_driver_version }}.jar"
+    jdbc_driver_jar_url: "https://repo.maven.apache.org/maven2/org/postgresql/postgresql/{{ jdbc_driver_version }}/{{ jdbc_driver_jar_filename }}"
+    jdbc_driver_jar_installation_path: "{{ jdbc_driver_module_dir }}/{{ jdbc_driver_jar_filename }}"
+    jdbc_driver_module_name: 'org.postgresql'
   tasks:
   - name: Start JBoss EAP
     ansible.builtin.command: systemctl start eap7-standalone
@@ -138,6 +246,36 @@
     ansible.builtin.copy:
       src: "{{ app_artifact_location }}{{ app_artifact_name }}"
       dest: "/opt/{{ app_artifact_name }}"
+
+  - name: "Set up for JBoss module"
+    include_role:
+      name: wildfly_driver
+
+  - name: JCliff
+    include_role:
+      name: jcliff
+
+  - name: "Fine tuning configuration"
+    jcliff:
+      wfly_home: "{{ wildfly_home }}"
+      timeout: 7000
+      management_port: "9990"
+      components:
+      - drivers:
+        - driver_name: postgresql
+          driver_module_name: org.postgresql
+          driver_class_name: org.postgresql.Driver
+          driver_xa_datasource_class_name: org.postgresql.xa.PGXADataSource
+      - datasources:
+          - name: "eapdb"
+            use_java_context: 'true'
+            jndi_name: "java:jboss/datasources/AddressbookDS"
+            connection_url: "jdbc:postgresql://{{ (groups['pgsql'][0] if groups['pgsql'] | length > 0 else 'localhost') }}:5432/wildfly?user=user1&password=pass$PA55!!"
+            driver_name: postgresql
+            user_name: "user1"
+            password: "pass$PA55!!"
+
+
   - name: "Deploy war file"
     include_role:
       name: wildfly_utils

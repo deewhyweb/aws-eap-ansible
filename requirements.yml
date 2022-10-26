@@ -6,3 +6,5 @@ collections:
   - name: amazon.aws
     version: "==3.3.1"
   - name: community.general
+  - name: middleware_automation.jcliff
+    version: ">=0.0.23"
